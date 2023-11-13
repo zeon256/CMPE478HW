@@ -1,11 +1,24 @@
-#include <stdio.h>
+#include <cstdio>
+#include <vector>
 
-const int N = 50;
-int prime[N];
+class CsvRow {
+private:
+    int M;
+    std::string openmp_scheduling_method;
+    int chunk_sz;
+    double t1;
+    double t2;
+    double t4;
+    double t8;
+    double s2;
+    double s4;
+    double s8;
+};
 
-int main() {    
-    int count = 1; // Number of primes found
-    prime[0] = 2;
+auto generate_csv_row() -> void {}
+
+auto generate_primes(const int N) -> std::vector<int> {
+    std::vector<int> prime(N, 2);
     
     // we add 2 because all priems are odd (except for 2)
     // so we can step += 2 instead of +=1
@@ -23,8 +36,14 @@ int main() {
 
         if (isPrime) prime[count++] = n;
     }
+    
+    return prime;
+}
 
-    for(int c : prime) printf("%d\n", c);
+
+auto main() -> int {
+
+    for(int c : generate_primes(50)) printf("%d\n", c);
 
     return 0;
 }
