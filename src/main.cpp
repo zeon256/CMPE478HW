@@ -1,71 +1,114 @@
+#include <chrono>
 #include <cstdio>
+#include <fstream>
 #include <sstream>
 #include <vector>
 
-class Benchmark {};
-
-class CsvRow {
+class Benchmark {
    private:
-    const int M;
-    const std::string openmp_scheduling_method;
-    const int chunk_sz;
-    const double t1;
-    const double t2;
-    const double t4;
-    const double t8;
-    const double s2;
-    const double s4;
-    const double s8;
+    const int max_m;
+    const int step;
+
+    static void find_primes_static(const int N, const int T) {
+        std::vector<int> primes{2};
+
+        for (int n = 3; primes.size() < N; n += 2) {
+            bool isPrime = true;
+
+            for (int i = 0; i < primes.size(); ++i) {
+                int prime = primes[i];
+                if (prime * prime > n) break;
+
+                // if number can be prime factorized => not prime
+                if (n % prime == 0) {
+                    isPrime = false;
+                    break;
+                }
+            }
+
+            if (isPrime) primes.push_back(n);
+        }
+    }
+
+    /**
+     * @brief Benchmark a function which takes in m
+     *
+     * @tparam F Function type
+     * @param m Number of primes to find
+     * @param f Function to benchmark
+     */
+    template <typename F>
+    inline long long time_benchmark(const int m, const int T, F f) {
+        std::chrono::steady_clock::time_point begin =
+            std::chrono::steady_clock::now();
+
+        f(m, T);
+
+        std::chrono::steady_clock::time_point end =
+            std::chrono::steady_clock::now();
+
+        auto time_taken =
+            std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+
+        return time_taken.count();
+    }
 
    public:
-    CsvRow(int M, std::string openmp_scheduling_method, int chunk_sz, double t1,
-           double t2, double t3, double t4, double t8)
-        : M(M),
-          openmp_scheduling_method(openmp_scheduling_method),
-          chunk_sz(chunk_sz),
-          t1(t1),
-          t2(t2),
-          t4(t4),
-          t8(t8),
-          s2(t2 / t1),
-          s4(t4 / t1),
-          s8(t8 / t1) {}
+    Benchmark(int max_m, int step) : max_m(max_m), step(step) {}
 
-    std::string to_string() const {
+    void run_benchmark() {
+        std::vector<std::array<std::string, 10>> csv;
+
+        // header
+        csv.push_back({"M", "OpenMP Loop Scheduling Method", "Chunk Size", "T1",
+                       "T2", "T4", "T8", "S2", "S4", "S8"});
+
+        for (int m = step; m <= max_m; m += step) {
+            printf("[M = %d] Starting benchmark\n", m);
+
+            std::vector<long long> timings = {
+                time_benchmark(m, 1, find_primes_static),
+                time_benchmark(m, 2, find_primes_static),
+                time_benchmark(m, 4, find_primes_static),
+                time_benchmark(m, 8, find_primes_static),
+            };
+
+            // append speed up to timings
+            const int T_SZ = timings.size();
+            for (int i = 1; i < T_SZ; ++i) {
+                timings.push_back((double)timings[0] / timings[i]);
+            }
+
+            // insert to csv
+            csv.push_back({std::to_string(m), "static", "1",
+                           std::to_string(timings[0]),
+                           std::to_string(timings[1]),
+                           std::to_string(timings[2]),
+                           std::to_string(timings[3]),
+                           std::to_string(timings[4]),
+                           std::to_string(timings[5]),
+                           std::to_string(timings[6])});            
+        }
+
+        // convert csv matrix to string
         std::stringstream ss;
-        ss << M << ", " << openmp_scheduling_method << ", " << chunk_sz << ", "
-           << t1 << ", " << t2 << ", " << t4 << ", " << t8 << ", " << s2 << ", "
-           << s4 << ", " << s8;
-        return ss.str();
+        for (auto row : csv) {
+            for (auto col : row) {
+                ss << col << ",";
+            }
+            ss << "\n";
+        }
+
+        // create file and write to it
+        std::ofstream outfile("benchmark.csv");
+        outfile << ss.str();
+        outfile.close();
     }
 };
 
-void generate_csv_row() {}
-
-void generate_primes(const int N) {
-    std::vector<int> prime = {2};
-
-    // we add 2 because all priems are odd (except for 2)
-    // so we can step += 2 instead of +=1
-    for (int n = 3; n < N; n += 2) {
-        bool isPrime = true;
-
-        for (int k = 0; prime[k] * prime[k] <= n; ++k) {
-            // check if number n can be broken down using another prime
-            // ie can be prime factorized
-            if (n % prime[k] == 0) {
-                isPrime = false;
-                break;
-            }
-        }
-
-        if (isPrime) prime.push_back(n);
-    }
-
-    for (int c : prime) printf("%d\n", c);
-}
-
 int main() {
-    generate_primes(50);
+    auto bench = Benchmark(10000, 1000);
+    bench.run_benchmark();
+
     return 0;
 }

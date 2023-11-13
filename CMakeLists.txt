@@ -20,4 +20,9 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(untitled3 PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-target_compile_options(untitled3 PRIVATE -Wall)
+# Set compiler-specific flags to treat nodiscard warnings as errors
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(untitled3 PRIVATE -Werror=nodiscard)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(untitled3 PRIVATE -Werror=nodiscard)
+endif()
