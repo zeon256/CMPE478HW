@@ -3,13 +3,14 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <utility>
 
 class Benchmark {
    private:
     const int max_m;
     const int step;
 
-    static void find_primes_static(const int N, const int T) {
+    static void find_primes_static(const int N, const int T, const int C) {
         std::vector<int> primes{2};
 
         for (int n = 3; primes.size() < N; n += 2) {
@@ -38,11 +39,12 @@ class Benchmark {
      * @param f Function to benchmark
      */
     template <typename F>
-    inline long long time_benchmark(const int m, const int T, F f) {
+    inline long long time_benchmark(const int m, const int T, const int C,
+                                    F f) {
         std::chrono::steady_clock::time_point begin =
             std::chrono::steady_clock::now();
 
-        f(m, T);
+        f(m, T, C);
 
         std::chrono::steady_clock::time_point end =
             std::chrono::steady_clock::now();
@@ -51,6 +53,21 @@ class Benchmark {
             std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 
         return time_taken.count();
+    }
+
+    void matrix_to_csv(std::vector<std::array<std::string, 10>> matrix) {
+        std::stringstream ss;
+
+        for (auto row : matrix) {
+            for (auto col : row) {
+                ss << col << ",";
+            }
+            ss << "\n";
+        }
+
+        std::ofstream outfile("../benchmark.csv");
+        outfile << ss.str();
+        outfile.close();
     }
 
    public:
@@ -67,10 +84,10 @@ class Benchmark {
             printf("[M = %d] Starting benchmark\n", m);
 
             std::vector<long long> timings = {
-                time_benchmark(m, 1, find_primes_static),
-                time_benchmark(m, 2, find_primes_static),
-                time_benchmark(m, 4, find_primes_static),
-                time_benchmark(m, 8, find_primes_static),
+                time_benchmark(m, 1, 2, find_primes_static),
+                time_benchmark(m, 2, 2, find_primes_static),
+                time_benchmark(m, 4, 2, find_primes_static),
+                time_benchmark(m, 8, 2, find_primes_static),
             };
 
             // append speed up to timings
@@ -80,29 +97,15 @@ class Benchmark {
             }
 
             // insert to csv
-            csv.push_back({std::to_string(m), "static", "1",
-                           std::to_string(timings[0]),
-                           std::to_string(timings[1]),
-                           std::to_string(timings[2]),
-                           std::to_string(timings[3]),
-                           std::to_string(timings[4]),
-                           std::to_string(timings[5]),
-                           std::to_string(timings[6])});            
+            csv.push_back(
+                {std::to_string(m), "static", "1", std::to_string(timings[0]),
+                 std::to_string(timings[1]), std::to_string(timings[2]),
+                 std::to_string(timings[3]), std::to_string(timings[4]),
+                 std::to_string(timings[5]), std::to_string(timings[6])});
         }
 
-        // convert csv matrix to string
-        std::stringstream ss;
-        for (auto row : csv) {
-            for (auto col : row) {
-                ss << col << ",";
-            }
-            ss << "\n";
-        }
-
-        // create file and write to it
-        std::ofstream outfile("benchmark.csv");
-        outfile << ss.str();
-        outfile.close();
+        // dont make a copy, move it instead to save memory
+        matrix_to_csv(std::move(csv));
     }
 };
 
