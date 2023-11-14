@@ -161,7 +161,7 @@ class Benchmark {
 
         std::vector<int> chunk_size = {2, 16, 32, 64, 128, 256};
 
-        for (int m = 0; m <= max_m; m += step) {
+        for (int m = 3; m <= max_m; m += step) {
             printf("[M = %d] Starting benchmark\n", m);
 
             for (int chunk : chunk_size) {
@@ -172,6 +172,8 @@ class Benchmark {
                 run_and_insert_to_csv_row("guided", chunk, m, csv,
                                           find_primes_guided);
             }
+
+            if (m == 3) m -= 3;
         }
 
         matrix_to_csv(csv);
