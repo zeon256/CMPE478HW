@@ -29,6 +29,26 @@
         "vector": "cpp",
         "algorithm": "cpp",
         "array": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "__errc": "cpp",
+        "__locale": "cpp",
+        "bitset": "cpp",
+        "cctype": "cpp",
+        "charconv": "cpp",
+        "clocale": "cpp",
+        "cstdio": "cpp",
+        "fstream": "cpp",
+        "ios": "cpp",
+        "istream": "cpp",
+        "mutex": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "system_error": "cpp",
+        "cstdarg": "cpp",
+        "cwctype": "cpp",
+        "execution": "cpp",
+        "iomanip": "cpp",
+        "optional": "cpp"
     }
 }
