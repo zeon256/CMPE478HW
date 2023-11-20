@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(untitled3)
+project(cmpe478_hw1)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,18 +11,18 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
 endif()
 
-add_executable(untitled3 src/main.cpp)
+add_executable(cmpe478_hw1 src/main.cpp)
 
 # Find OpenMP
 find_package(OpenMP REQUIRED)
 if(OpenMP_CXX_FOUND)
     message("Found OpenMP!")
-    target_link_libraries(untitled3 PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(cmpe478_hw1 PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # Set compiler-specific flags to treat nodiscard warnings as errors
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(untitled3 PRIVATE -Werror=nodiscard)
+    target_compile_options(cmpe478_hw1 PRIVATE)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(untitled3 PRIVATE -Werror=nodiscard)
+    target_compile_options(cmpe478_hw1 PRIVATE)
 endif()

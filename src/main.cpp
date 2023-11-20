@@ -10,63 +10,25 @@ class Benchmark {
    private:
     const int max_m;
     const int step;
-
-    static void find_primes_static(const int N, const int T, const int C) {
+    
+    /**
+     * @brief Find primes from 3 to N using OpenMP scheduling
+     * Method is templated to allow for static, dynamic, and guided scheduling
+     * so that we don't have to write 3 separate functions
+     * @tparam schedule_type OpenMP scheduling type
+     */
+    template <const omp_sched_t schedule_type>
+    static void find_primes(const int N, const int T, const int C) {
         omp_set_num_threads(T);
+        omp_set_schedule(schedule_type, C);
         std::vector<int> primes{2};
 
-#pragma omp parallel for schedule(static, C) private(primes)
+        // clang-format off
+        #pragma omp parallel for schedule(runtime) private(primes)
         for (int n = 3; n < N; n += 2) {
             bool isPrime = true;
 
-            for (int i = 0; i < primes.size(); ++i) {
-                int prime = primes[i];
-                if (prime * prime > n) break;
-
-                // if number can be prime factorized => not prime
-                if (n % prime == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-
-            if (isPrime) primes.push_back(n);
-        }
-    }
-
-    static void find_primes_dynamic(const int N, const int T, const int C) {
-        omp_set_num_threads(T);
-        std::vector<int> primes{2};
-
-#pragma omp parallel for schedule(dynamic, C) private(primes)
-        for (int n = 3; n < N; n += 2) {
-            bool isPrime = true;
-
-            for (int i = 0; i < primes.size(); ++i) {
-                int prime = primes[i];
-                if (prime * prime > n) break;
-
-                // if number can be prime factorized => not prime
-                if (n % prime == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-
-            if (isPrime) primes.push_back(n);
-        }
-    }
-
-    static void find_primes_guided(const int N, const int T, const int C) {
-        omp_set_num_threads(T);
-        std::vector<int> primes{2};
-
-#pragma omp parallel for schedule(guided, C) private(primes)
-        for (int n = 3; n < N; n += 2) {
-            bool isPrime = true;
-
-            for (int i = 0; i < primes.size(); ++i) {
-                int prime = primes[i];
+            for(int prime : primes) {
                 if (prime * prime > n) break;
 
                 // if number can be prime factorized => not prime
@@ -90,15 +52,14 @@ class Benchmark {
      * @param f Function to benchmark
      */
     template <typename F>
+    requires std::invocable<F&, const int, const int, const int>
     inline double time_benchmark(const int m, const int T, const int C,
-                                 const F f) {
-        std::chrono::steady_clock::time_point begin =
-            std::chrono::steady_clock::now();
+                                 F f) {
+        auto begin = std::chrono::steady_clock::now();
 
         f(m, T, C);
 
-        std::chrono::steady_clock::time_point end =
-            std::chrono::steady_clock::now();
+        auto end = std::chrono::steady_clock::now();
 
         auto time_taken =
             std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
@@ -106,7 +67,12 @@ class Benchmark {
         return (double)time_taken.count();
     }
 
+    /**
+     * @brief Convert matrix to csv and write to file
+     * @param matrix Matrix to convert
+    */
     void matrix_to_csv(std::vector<std::array<std::string, 10>> const& matrix) {
+        printf("[+] Writing to csv\n");
         std::stringstream ss;
 
         for (auto row : matrix) {
@@ -116,15 +82,27 @@ class Benchmark {
             ss << "\n";
         }
 
-        std::ofstream outfile("../benchmark.csv");
+        std::ofstream outfile("benchmark.csv");
         outfile << ss.str();
         outfile.close();
     }
 
+    /**
+     * @brief Run benchmark and insert to csv row
+     * @tparam F Function type
+     * @param scheduler_name Name of scheduler
+     * @param chunk Chunk size
+     * @param m Number of primes to find
+     * @param csv CSV matrix
+     * @param f Function to benchmark
+    */
     template <typename F>
-    void run_and_insert_to_csv_row(
-        std::string scheduler_name, const int chunk, const int m,
-        std::vector<std::array<std::string, 10>>& csv, F f) {
+    requires std::invocable<F&, const int, const int, const int>
+    void run_and_insert_to_csv_row(std::string scheduler_name, 
+        const int chunk,
+        const int m,
+        std::vector<std::array<std::string, 10>>& csv,
+        F f) {
         std::vector<double> timings;
 
         // num threads
@@ -153,6 +131,7 @@ class Benchmark {
     Benchmark(int max_m, int step) : max_m(max_m), step(step) {}
 
     void run_benchmark() {
+        // csv matrix, we only have 10 columns so we can use std::array
         std::vector<std::array<std::string, 10>> csv;
 
         // header
@@ -160,20 +139,19 @@ class Benchmark {
                        "T2", "T4", "T8", "S2", "S4", "S8"});
 
         std::vector<int> chunk_size = {2, 16, 32, 64, 128, 256};
-
-        for (int m = 3; m <= max_m; m += step) {
+        
+        // start at 1000
+        for (int m = 1000; m <= max_m; m += step) {
             printf("[M = %d] Starting benchmark\n", m);
 
             for (int chunk : chunk_size) {
                 run_and_insert_to_csv_row("static", chunk, m, csv,
-                                          find_primes_static);
+                                        find_primes<omp_sched_static>);
                 run_and_insert_to_csv_row("dynamic", chunk, m, csv,
-                                          find_primes_dynamic);
+                                          find_primes<omp_sched_dynamic>);
                 run_and_insert_to_csv_row("guided", chunk, m, csv,
-                                          find_primes_guided);
+                                          find_primes<omp_sched_guided>);
             }
-
-            if (m == 3) m -= 3;
         }
 
         matrix_to_csv(csv);
