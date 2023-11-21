@@ -63,7 +63,7 @@ Then run the following command to run the project
 
 ## Results
 - Output file is benchmark.csv
-- 
+
 ![image](https://github.com/zeon256/CMPE478HW/assets/40015023/f1382d8e-77b3-47f3-9f07-8ed67a8fe244)
 ![image](https://github.com/zeon256/CMPE478HW/assets/40015023/c51fe4ea-f97e-49d1-ac56-efa495649522)
 ![image](https://github.com/zeon256/CMPE478HW/assets/40015023/4d512ea6-47d4-4ada-8c79-feed97d19ead)
