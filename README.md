@@ -1,8 +1,8 @@
 # CMPE478 Homework 1 Fall 2023
 
 ## Team members
-- Budi Syahiddin
-- Ahmad Azfar
+- Budi Syahiddin (2023680084)
+- Ahmad Azfar (2023)
 
 ## What do we understand from the sample code?
 The sample code provided is a simple way to find prime numbers 
@@ -15,10 +15,18 @@ If a number can be prime factorized, then it is not a prime number.
 - Use `std::chrono` to measure the time taken to run the code
 - Use `std::ofstream` to write the results to a file
 
+## Parallelization
+- Given a number `M`, we sequentially generate prime numbers up to srqt(M) and store it in a vector
+- Then, from sqrt(M) to M, we check if the number is prime by checking if it can be prime factorized
+- This portion is parallelized using OpenMP with different scheduling methods
+- We also make sure that we don't wait for the threads to finish before beginning the next iteration
+- Then we ensure that writing to final buffer is protected using `omp critical`
+
 ## Design decisions
 - Modern C++ is used to make the code easier to read and understand
 - `std::vector` is used to store the prime numbers
 - `std::ofstream` is used to write the results to a file
+- `std::chrono` is used to measure the time taken to run the code, ensuring that we don't time printing and sorting the results
 - Use C++ templates to reduce code duplication
 - Use C++20 concepts to make the code easier to read and understand
 

@@ -49,6 +49,8 @@
         "cwctype": "cpp",
         "execution": "cpp",
         "iomanip": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "functional": "cpp",
+        "unordered_map": "cpp"
     }
 }

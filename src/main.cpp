@@ -9,8 +9,31 @@
 class Benchmark {
    private:
     const int max_m;
-    const int step;
-    
+
+    static inline std::vector<int> find_primes_sqrtn(const int sqrt_n) {
+        std::vector<int> primes{2};
+
+        // find primes from 3 to sqrt(N)
+        // inherently sequential
+        for (int n = 3; n <= sqrt_n; n += 2) {
+            bool is_prime = true;
+
+            for (int prime : primes) {
+                if (prime * prime > n) break;
+
+                // if number can be prime factorized => not prime
+                if (n % prime == 0) {
+                    is_prime = false;
+                    break;
+                }
+            }
+
+            if (is_prime) primes.push_back(n);
+        }
+
+        return primes;
+    }
+
     /**
      * @brief Find primes from 3 to N using OpenMP scheduling
      * Method is templated to allow for static, dynamic, and guided scheduling
@@ -18,28 +41,47 @@ class Benchmark {
      * @tparam schedule_type OpenMP scheduling type
      */
     template <const omp_sched_t schedule_type>
-    static void find_primes(const int N, const int T, const int C) {
+    static auto find_primes(const int M, const int T, const int C)
+        -> std::pair<std::vector<int>, std::vector<int>> {
         omp_set_num_threads(T);
         omp_set_schedule(schedule_type, C);
-        std::vector<int> primes{2};
+
+        const int sqrt_n = (int)sqrt(M);
+
+        std::vector<int> primes = find_primes_sqrtn(sqrt_n);
+        std::vector<int> par_result;
+        std::vector<int> local_primes;
 
         // clang-format off
-        #pragma omp parallel for schedule(runtime) private(primes)
-        for (int n = 3; n < N; n += 2) {
-            bool isPrime = true;
+        #pragma omp parallel private(local_primes) shared(primes, par_result)
+        {
+            // find primes from sqrt(N) + 1 to N
+            // parallelize this part
+            // we can do this because we know that the primes from 3 to sqrt(N)
+            // we want to skip even numbers, so we start at sqrt(N) + 1 if sqrt(N) is even
+            // and sqrt(N) + 2 if sqrt(N) is odd
+            #pragma omp for schedule(runtime) nowait
+            for (int n = ((sqrt_n + 1) & 1) ? sqrt_n + 1 : sqrt_n + 2; n <= M; n+=2) {
+                bool is_prime = true;
 
-            for(int prime : primes) {
-                if (prime * prime > n) break;
-
-                // if number can be prime factorized => not prime
-                if (n % prime == 0) {
-                    isPrime = false;
-                    break;
+                for(int prime : primes) {
+                    // if number can be prime factorized => not prime
+                    if (n % prime == 0) {
+                        is_prime = false;
+                        break;
+                    }
                 }
+
+                if (is_prime) local_primes.push_back(n);
             }
 
-            if (isPrime) primes.push_back(n);
+            #pragma omp critical
+            par_result.insert(par_result.end(), local_primes.begin(), local_primes.end());
         }
+
+        // we dont do printing here because we dont want to time it
+
+        return { primes, par_result };
     }
 
     /**
@@ -53,16 +95,20 @@ class Benchmark {
      */
     template <typename F>
     requires std::invocable<F&, const int, const int, const int>
-    inline double time_benchmark(const int m, const int T, const int C,
-                                 F f) {
+    inline auto time_benchmark(const int m, const int T, const int C,
+                                 F f) -> double {
         auto begin = std::chrono::steady_clock::now();
 
-        f(m, T, C);
+        auto [primes, result] = f(m, T, C);        
 
         auto end = std::chrono::steady_clock::now();
-
         auto time_taken =
             std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+        
+        std::sort(result.begin(), result.end());
+
+        for(int prime : primes) printf("%d\n", prime);
+        for(int prime : result) printf("%d\n", prime);
 
         return (double)time_taken.count();
     }
@@ -98,7 +144,8 @@ class Benchmark {
     */
     template <typename F>
     requires std::invocable<F&, const int, const int, const int>
-    void run_and_insert_to_csv_row(std::string scheduler_name, 
+    void run_and_insert_csv(
+        std::string scheduler_name, 
         const int chunk,
         const int m,
         std::vector<std::array<std::string, 10>>& csv,
@@ -117,7 +164,10 @@ class Benchmark {
         }
 
         std::array<std::string, 10> timings_str = {
-            std::to_string(m), scheduler_name, std::to_string(chunk)};
+            std::to_string(m),
+            scheduler_name,
+            std::to_string(chunk)
+        };
 
         for (int i = 0; i < timings.size(); ++i) {
             timings_str[i + 3] = std::to_string(timings[i]);
@@ -128,7 +178,7 @@ class Benchmark {
     }
 
    public:
-    Benchmark(int max_m, int step) : max_m(max_m), step(step) {}
+    Benchmark(int max_m) : max_m(max_m) {}
 
     void run_benchmark() {
         // csv matrix, we only have 10 columns so we can use std::array
@@ -137,20 +187,16 @@ class Benchmark {
         // header
         csv.push_back({"M", "OpenMP Loop Scheduling Method", "Chunk Size", "T1",
                        "T2", "T4", "T8", "S2", "S4", "S8"});
-
-        std::vector<int> chunk_size = {2, 16, 32, 64, 128, 256};
         
         // start at 1000
-        for (int m = 1000; m <= max_m; m += step) {
-            printf("[M = %d] Starting benchmark\n", m);
-
-            for (int chunk : chunk_size) {
-                run_and_insert_to_csv_row("static", chunk, m, csv,
-                                        find_primes<omp_sched_static>);
-                run_and_insert_to_csv_row("dynamic", chunk, m, csv,
-                                          find_primes<omp_sched_dynamic>);
-                run_and_insert_to_csv_row("guided", chunk, m, csv,
-                                          find_primes<omp_sched_guided>);
+        for (int M = 1000; M <= max_m; M *= 10) {
+            printf("[M = %d] Starting benchmark\n", M);
+            
+            // 16 32 64 128 256
+            for (int chunk = 16; chunk <= 256; chunk *= 2) {
+                run_and_insert_csv("static", chunk, M, csv, find_primes<omp_sched_static>);
+                run_and_insert_csv("dynamic", chunk, M, csv, find_primes<omp_sched_dynamic>);
+                run_and_insert_csv("guided", chunk, M, csv, find_primes<omp_sched_guided>);
             }
         }
 
@@ -158,8 +204,8 @@ class Benchmark {
     }
 };
 
-int main() {
-    auto bench = Benchmark(100000, 1000);
+auto main() -> int {
+    auto bench = Benchmark(1e6);
     bench.run_benchmark();
 
     return 0;
