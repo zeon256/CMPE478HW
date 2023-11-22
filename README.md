@@ -2,7 +2,7 @@
 
 ## Team members
 - Budi Syahiddin (2023680084)
-- Ahmad Azfar (2023)
+- Ahmad Azfar (2023680072)
 
 ## What do we understand from the sample code?
 The sample code provided is a simple way to find prime numbers 
