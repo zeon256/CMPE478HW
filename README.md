@@ -70,10 +70,5 @@ Then run the following command to run the project
 
 ## Results
 - Output file is benchmark.csv
-- The results are then split using microsoft excel so that we can generate a graph
-
-![image](./images/graph1.png)
-![image](./images/graph2.png)
-![image](./images/graph3.png)
 
 
